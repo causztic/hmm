@@ -1,4 +1,5 @@
 import numpy as np
+import part2
 
 def viterbi(sentence, X, S, Y, A, B):
     """
@@ -30,7 +31,7 @@ def viterbi(sentence, X, S, Y, A, B):
         # T2[i, 0] = 0
 
     # recursive case
-    for i in range(1, T) do
+    for i in range(1, T):
         for j in range(K):
             calc = [T1[k, i-1] * A[k, j] * B[j, i] for k in range(K)]
             max_value = np.amax(calc)
@@ -79,7 +80,7 @@ def viterbi_2(sentence, X, S, Y, A, B):
         T2[i, 1] = calc.index(max_value)
 
     # recursive case. Same as the original viterbi's recursive case except with an extra T1 with i-2.
-    for i in range(2, T) do
+    for i in range(2, T):
         for j in range(K):
             calc = [T1[k, i-2] * T1[k, i-1] * A[k, j] * B[j, i] for k in range(K)]
             max_value = np.amax(calc)
@@ -101,3 +102,27 @@ def viterbi_2(sentence, X, S, Y, A, B):
         result[i-1] = S[Z[i-1]]
 
     return result
+
+if __name__ == "__main__":
+    for locale in ["EN", "FR"]:
+        DATA = open(f"./../data/{locale}/train")
+        training_set = part2.prepare_data(DATA)
+        _results, words, label_counts, emission_counts = part2.estimate_emissions(
+            training_set)
+
+        TEST_DATA = open(f"./../data/{locale}/dev.in")
+        testing_set = part2.prepare_data(TEST_DATA)
+        # with the test data, we are able to smooth out the emissions.
+        results = part2.smooth_emissions(
+            testing_set, words, label_counts, emission_counts)
+
+        # from the results, we generate a K x N matrix.
+        B = np.zeros((len(label_counts), len(results)))
+        for j, (j_key, j_value) in enumerate(results.items()):
+            for i, i_key in enumerate(label_counts.keys()):
+                if i_key in j_value:
+                    # if the state emits the word at j
+                    B[i, j] = j_value[i_key]
+        print(f"S -> {label_counts.keys()}")
+        print(f"X -> {len(results)} words")
+        print(B.shape)
