@@ -60,7 +60,6 @@ def estimate_transitions(sequence, group_size = 2, overlap = 1):
         for j in range(A.shape[1]):
             A[i, j] = float(A[i, j]) / label_counts.values()[i]
 
-    # over here, A[0, *] will be Y (initial transitions, START -> S), and A[n, *] are the final transtitions (S -> STOP)
     return label_counts, A
 
 
@@ -69,7 +68,7 @@ issue in your implementation.
 """
 
 
-def viterbi(sentence, X, S, Y, A, B):
+def viterbi(sentence, X, S, A, B):
     """
     This algorithm generates a path which is a sequence of labels that generates the observations.
     The code references the pseudocode from Wikipedia https://en.wikipedia.org/wiki/Viterbi_algorithm.
@@ -81,7 +80,6 @@ def viterbi(sentence, X, S, Y, A, B):
 
     other inputs are:
     sentence => the sentence we are analyzing. it is T-long.
-    Y => list of initial transistion probabilities, such that Yi stores the probability that Y1 == Si (START -> Si)
     A => transition matrix of size K x K such that Aij stores the transition probability of transiting from si to sj.
     B => emission matrix of size K x N such that Bij stores the probability of observing oj from si.
     """
@@ -95,9 +93,9 @@ def viterbi(sentence, X, S, Y, A, B):
     T2 = np.zeros((K, T))
     result = np.zeroes(T)
 
-    # base case
+    # first case, START -> S1
     for i in range(K):
-        T1[i, 0] = Y[i]*B[i, 0]
+        T1[i, 0] = A[0, i]*B[i, 0]
         # T2[i, 0] = 0
 
     # recursive case
@@ -110,6 +108,15 @@ def viterbi(sentence, X, S, Y, A, B):
             T2[j, i] = calc.index(max_value)
 
     # end case
+    # we omit B as STOP will not have a B value (all 0)
+    for j in range(K):
+        calc = [T1[k, T-1] * A[k, j] for k in range(K)]
+        max_value = np.amax(calc)
+        # find the maximum value and store into T1. store the k responsible into T2.
+        T1[j, i] = max_value
+        T2[j, i] = calc.index(max_value)
+
+
     # we have a list to store the largest values. we go through T2 to obtain back the best path.
     Z = np.zeroes(T)
 
@@ -124,7 +131,7 @@ def viterbi(sentence, X, S, Y, A, B):
 
     return result
 
-def predict_viterbi(locale, observations, labels, Y, A, B):
+def predict_viterbi(locale, observations, labels, A, B):
     """Get most probable label -> observation with Viterbi, and write to file."""
 
     training_set = [line.rstrip("\n")
@@ -136,7 +143,7 @@ def predict_viterbi(locale, observations, labels, Y, A, B):
     for line in training_set:
         if not line.strip():
             # sentence has ended
-            result = viterbi(sentence_buffer, observations, labels, Y, A, B)
+            result = viterbi(sentence_buffer, observations, labels, A, B)
             for index, word in enumerate(sentence_buffer):
                 file.write(f"{word} {result[index]}")
 
