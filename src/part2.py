@@ -80,6 +80,10 @@ def smooth_emissions(sequence, observations, label_counts, emission_counts):
 def get_B(label_counts, emissions):
     # from the results, we generate a K x N matrix.
     B = np.zeros((len(label_counts), len(emissions)))
+
+    # emissions structure is something like
+    # { observation: { label_1: n, label_2: n2 }}
+
     for j, (j_key, j_value) in enumerate(emissions.items()):
         for i, i_key in enumerate(label_counts.keys()):
             if i_key in j_value:

@@ -12,7 +12,7 @@ def estimate_transitions(sequence, group_size = 2, overlap = 1):
     group_size is the order of the transitions + 1
     overlap is the order of the transitions.
     """
-    label_counts = {START_TOKEN: 0, STOP_TOKEN: 0}  # count of every label
+    label_counts = {START_TOKEN: 0}  # count of every label
 
     # we do a first-pass to obtain the counts of every label.
     for sentence in sequence:
@@ -26,7 +26,9 @@ def estimate_transitions(sequence, group_size = 2, overlap = 1):
             else:
                 label_counts[label] = 1
 
-        label_counts[STOP_TOKEN] += 1
+    # we add STOP_TOKEN at the end to preserve state order.
+    label_counts[STOP_TOKEN] = len(sequence)
+
 
     # now, we calculate the probabilities of each transition.
     K = len(label_counts)
@@ -49,7 +51,7 @@ def estimate_transitions(sequence, group_size = 2, overlap = 1):
             A[Si_index, Sj_index] += 1
 
         # handle Sn -> END_TOKEN
-        A[1, label_counts.keys().index(window[-1].rsplit(" ", 1)[1])] += 1
+        A[len(label_counts) - 1, label_counts.keys().index(window[-1].rsplit(" ", 1)[1])] += 1
 
 
     # now that results have all the counts of transitions,
@@ -58,7 +60,8 @@ def estimate_transitions(sequence, group_size = 2, overlap = 1):
         for j in range(A.shape[1]):
             A[i, j] = float(A[i, j]) / label_counts.values()[i]
 
-    return label_count, A
+    # over here, A[0, *] will be Y (initial transitions, START -> S), and A[n, *] are the final transtitions (S -> STOP)
+    return label_counts, A
 
 
 """TODO: in case you encounter potential numerical underflow issue, think of a way to address such an
@@ -78,7 +81,7 @@ def viterbi(sentence, X, S, Y, A, B):
 
     other inputs are:
     sentence => the sentence we are analyzing. it is T-long.
-    Y => list of initial transistion probabilities, such that Yi stores the probability that Y1 == Si.
+    Y => list of initial transistion probabilities, such that Yi stores the probability that Y1 == Si (START -> Si)
     A => transition matrix of size K x K such that Aij stores the transition probability of transiting from si to sj.
     B => emission matrix of size K x N such that Bij stores the probability of observing oj from si.
     """
@@ -121,7 +124,7 @@ def viterbi(sentence, X, S, Y, A, B):
 
     return result
 
-def predict_viterbi(locale, A, B):
+def predict_viterbi(locale, observations, labels, Y, A, B):
     """Get most probable label -> observation with Viterbi, and write to file."""
 
     training_set = [line.rstrip("\n")
@@ -133,7 +136,7 @@ def predict_viterbi(locale, A, B):
     for line in training_set:
         if not line.strip():
             # sentence has ended
-            result = viterbi(sentence_buffer, X, label_counts, Y, A, B)
+            result = viterbi(sentence_buffer, observations, labels, Y, A, B)
             for index, word in enumerate(sentence_buffer):
                 file.write(f"{word} {result[index]}")
 
