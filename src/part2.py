@@ -1,15 +1,62 @@
+import numpy as np
 from itertools import groupby
 
 UNKNOWN_TOKEN = "#UNK#"
 
 def prepare_data(file):
-    """Prepare the file. Generates a list of lists of sentences"""
+    """
+    Prepare the file, and returns a list of lists of "{observation} {label}"
+
+    file : the name of the file to read
+    """
+
     lines = [line for line in file]
     chunks = (list(g) for k, g in groupby(lines, key=lambda x: x != '\n') if k)
     return [[observation.rstrip('\n') for observation in chunk] for chunk in chunks]
 
+def get_observation_set(sequence, add_unknown_token=False):
+    """
+    Reads the sequence and returns a set() of observations.
+
+    sequence : a list of lists of either "{observation} {label}" or "{observation}"
+    """
+
+    observation_set = set()
+    if add_unknown_token:
+        observation_set.add(UNKNOWN_TOKEN)
+
+    # flatten the lists
+    sequence = (item for sublist in training_sequence for item in sublist)
+
+    for item in sequence:
+        observation = item.rsplit(" ", 1)[0]
+        observation_set.add(item)
+
+    return observation_set
+
+def get_label_set(training_sequence):
+    """
+    Reads the sequence and returns a set() of labels.
+
+    training_sequence : a list of lists of "{observation} {label}"
+    """
+
+    label_set = set()
+    # flatten the lists
+    training_sequence = (item for sublist in training_sequence for item in sublist)
+
+    for item in training_sequence:
+        label = item.rsplit(" ", 1)[1]
+        label_set.add(label)
+
+    return label_set
+
 def estimate_emissions(sequence):
-    """Estimates the emission paramters from the given sequence."""
+    """
+    Estimates the emission parameters from the given training sequence, without smoothing.
+
+    sequence : a list of lists of "{observation} {label}"
+    """
 
     label_counts = {}  # count of every unique label
     emission_counts = {}  # count of label -> observation
@@ -20,33 +67,37 @@ def estimate_emissions(sequence):
     sequence = (item for sublist in sequence for item in sublist)
 
     for item in sequence:
-        pair = item.rsplit(" ", 1)
-
-        observations.add(pair[0])
-
+        observation, label = item.rsplit(" ", 1)
+        observations.add(observation)
         if item in emission_counts:
             emission_counts[item] += 1
         else:
             emission_counts[item] = 1
-        if pair[1] in label_counts:
-            label_counts[pair[1]] += 1
+        if label in label_counts:
+            label_counts[label] += 1
         else:
-            label_counts[pair[1]] = 1
+            label_counts[label] = 1
 
-    for key, value in emission_counts.items():
-        values = key.rsplit(" ", 1)
-        results[f"{values[0]}|{values[1]}"] = value / \
-            float(label_counts[values[1]])
+    # here we estimate the emission parameters using MLE after obtaining the counts.
+    # count(label -> observation) / count(label)
+    for key, emission_count in emission_counts.items():
+        observation, label = key.rsplit(" ", 1)
+        results[f"{label} -> {observation}"] = emission_count / float(label_counts[label])
 
-    return results, observations, label_counts, emission_counts
+    return results, list(observations), label_counts, emission_counts
 
 def smooth_emissions(sequence, observations, label_counts, emission_counts):
     """
     Estimates the emission parameters from the sequence (all the sentences) from the testing set,
     and a given set of observations from the training set.
-    """
 
-    results = {}  # MLE results
+    sequence       : a list of lists of "{observation} {label}" from the testing set
+    observations   : observations from the training set
+    label_counts   : { label: count } from the training set
+    emission_counts: { "{observation} {label}": count } from the training set
+    """
+    labels = list(label_counts)
+    B = np.zeros((len(label_counts), len(observations) + 1)) # + 1 to accomodate for UNKNOWN_TOKEN.
     k = 1  # set k to 1 according to question
 
     # flatten the list
@@ -57,62 +108,46 @@ def smooth_emissions(sequence, observations, label_counts, emission_counts):
             # new observation, add to count of unknowns
             k += 1
 
-    print(f"There are {k} new observations in the testing set.")
-    # If the observation token x appears in the training set. i.e. all existing emission_counts.
-    for key, value in emission_counts.items():
-        values = key.rsplit(" ", 1)
-        probability = float(value) / (label_counts[values[-1]] + k)
+    # If the observation appears in the training set i.e. it appeared in emission_counts.
+    for key, emission_count in emission_counts.items():
+        observation, label = key.rsplit(" ", 1)
+        probability = float(emission_count) / (label_counts[label] + k)
 
-        if values[0] in results:
-            results[values[0]][values[1]] = probability
-        else:
-            results[values[0]] = {values[1]: probability}
+        B[labels.index(label), observations.index(observation)] = probability
 
-    # If observation token x is the special token #UNK#. i.e. for every label, we just add in a new condition #UNK#|y.
+    # If observation is #UNK#. i.e. for every label, we just add in a new condition #UNK#|y.
     # This would be 0 if there are no #UNK#.
-    results[UNKNOWN_TOKEN] = {}
 
-    for key, value in label_counts.items():
-        results[UNKNOWN_TOKEN][key] = float(k) / (value + k)
+    for label, label_count in label_counts.items():
+        B[labels.index(label), -1] = float(k) / (label_count + k)
 
-    return results
-
-def get_B(label_counts, emissions):
-    # from the results, we generate a K x N matrix.
-    B = np.zeros((len(label_counts), len(emissions)))
-
-    # emissions structure is something like
-    # { observation: { label_1: n, label_2: n2 }}
-
-    for j, (j_key, j_value) in enumerate(emissions.items()):
-        for i, i_key in enumerate(label_counts.keys()):
-            if i_key in j_value:
-                # if the label emits the observation at j
-                B[i, j] = j_value[i_key]
     return B
 
-def predict_labels(locale, results):
-    """Get most probable label -> observation, and write to file."""
-    labels = {}
+def predict_labels(locale, B, observations, label_counts):
+    """
+    Get most probable label -> observation, and write to file.
+
+    locale       : locale of the dataset. should be either SG, EN, CN, or FR
+    B            : K by K matrix of emission probabilities.
+    observations : a list of observations in the training data
+    label_counts : { label -> count }
+    """
+    labels = list(label_counts)
     training_set = [line.rstrip("\n")
                     for line in open(f"./../data/{locale}/dev.in")]
 
-    for key, value in results.items():
-        highest = -1
-        for label, prob in value.items():
-            if prob > highest:
-                highest = prob
-                labels[key] = label
 
     file = open(f"./../data/{locale}/dev.p2.out", "w")
     for line in training_set:
         if not line.strip():
             file.write("\n")
         else:
-            if line in labels:
-                label_value = labels[line]
+            if line in observations:
+                # if the observation is in our observations, we take the most probable label.
+                label_value = labels[np.argmax(B[:,observations.index(line)])]
             else:
-                label_value = labels[UNKNOWN_TOKEN]
+                # take the unknown's value.
+                label_value = labels[np.argmax(B[:,-1])]
 
             file.write(f"{line} {label_value}\n")
     file.close()
@@ -129,8 +164,8 @@ if __name__ == "__main__":
         TEST_DATA = open(f"./../data/{locale}/dev.in")
         testing_set = prepare_data(TEST_DATA)
         # with the test data, we are able to smooth out the emissions.
-        results = smooth_emissions(
+        B = smooth_emissions(
             testing_set, observations, label_counts, emission_counts)
 
         # we perform argmax on each observation to get the most probable label for each observation.
-        predict_labels(locale, results)
+        predict_labels(locale, B, observations, label_counts)
