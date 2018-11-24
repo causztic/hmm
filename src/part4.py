@@ -1,5 +1,6 @@
 import numpy as np
 import part2
+import part3
 
 def viterbi_2(sentence, X, S, Y, A, B):
     """
@@ -61,16 +62,7 @@ if __name__ == "__main__":
         TEST_DATA = open(f"./../data/{locale}/dev.in")
         testing_set = part2.prepare_data(TEST_DATA)
         # with the test data, we are able to smooth out the emissions.
-        results = part2.smooth_emissions(
+        emissions = part2.smooth_emissions(
             testing_set, observations, label_counts, emission_counts)
 
-        # from the results, we generate a K x N matrix.
-        B = np.zeros((len(label_counts), len(results)))
-        for j, (j_key, j_value) in enumerate(results.items()):
-            for i, i_key in enumerate(label_counts.keys()):
-                if i_key in j_value:
-                    # if the label emits the observation at j
-                    B[i, j] = j_value[i_key]
-        print(f"S -> {label_counts.keys()}")
-        print(f"X -> {len(results)} observations")
-        print(B.shape)
+        transitions = part2.estimate_transitions(training_set)

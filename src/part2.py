@@ -77,6 +77,15 @@ def smooth_emissions(sequence, observations, label_counts, emission_counts):
 
     return results
 
+def get_B(label_counts, emissions):
+    # from the results, we generate a K x N matrix.
+    B = np.zeros((len(label_counts), len(emissions)))
+    for j, (j_key, j_value) in enumerate(emissions.items()):
+        for i, i_key in enumerate(label_counts.keys()):
+            if i_key in j_value:
+                # if the label emits the observation at j
+                B[i, j] = j_value[i_key]
+    return B
 
 def predict_labels(locale, results):
     """Get most probable label -> observation, and write to file."""
