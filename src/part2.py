@@ -142,6 +142,7 @@ def predict_labels(locale, B, observations, label_counts):
         if not line.strip():
             file.write("\n")
         else:
+            # TODO: bottleneck here due to argmax.
             if line in observations:
                 # if the observation is in our observations, we take the most probable label.
                 label_value = labels[np.argmax(B[:,observations.index(line)])]
