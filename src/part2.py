@@ -6,7 +6,7 @@ def prepare_data(file):
     """Prepare the file. Generates a list of lists of sentences"""
     lines = [line for line in file]
     chunks = (list(g) for k, g in groupby(lines, key=lambda x: x != '\n') if k)
-    return [[word.rstrip('\n') for word in chunk] for chunk in chunks]
+    return [[observation.rstrip('\n') for observation in chunk] for chunk in chunks]
 
 def estimate_emissions(sequence):
     """Estimates the emission paramters from the given sequence."""
@@ -14,7 +14,7 @@ def estimate_emissions(sequence):
     label_counts = {}  # count of every unique label
     emission_counts = {}  # count of label -> observation
     results = {}  # MLE results
-    words = set()  # track the words in the training set
+    observations = set()  # track the observations in the training set
 
     # flatten the list
     sequence = (item for sublist in sequence for item in sublist)
@@ -22,7 +22,7 @@ def estimate_emissions(sequence):
     for item in sequence:
         pair = item.rsplit(" ", 1)
 
-        words.add(pair[0])
+        observations.add(pair[0])
 
         if item in emission_counts:
             emission_counts[item] += 1
@@ -38,12 +38,12 @@ def estimate_emissions(sequence):
         results[f"{values[0]}|{values[1]}"] = value / \
             float(label_counts[values[1]])
 
-    return results, words, label_counts, emission_counts
+    return results, observations, label_counts, emission_counts
 
-def smooth_emissions(sequence, words, label_counts, emission_counts):
+def smooth_emissions(sequence, observations, label_counts, emission_counts):
     """
     Estimates the emission parameters from the sequence (all the sentences) from the testing set,
-    and a given set of words from the training set.
+    and a given set of observations from the training set.
     """
 
     results = {}  # MLE results
@@ -53,12 +53,12 @@ def smooth_emissions(sequence, words, label_counts, emission_counts):
     sequence = (item for sublist in sequence for item in sublist)
 
     for item in sequence:
-        if item not in words:
-            # new word, add to count of unknowns
+        if item not in observations:
+            # new observation, add to count of unknowns
             k += 1
 
-    print(f"There are {k} new words in the testing set.")
-    # If the word token x appears in the training set. i.e. all existing emission_counts.
+    print(f"There are {k} new observations in the testing set.")
+    # If the observation token x appears in the training set. i.e. all existing emission_counts.
     for key, value in emission_counts.items():
         values = key.rsplit(" ", 1)
         probability = float(value) / (label_counts[values[-1]] + k)
@@ -68,7 +68,7 @@ def smooth_emissions(sequence, words, label_counts, emission_counts):
         else:
             results[values[0]] = {values[1]: probability}
 
-    # If word token x is the special token #UNK#. i.e. for every label, we just add in a new condition #UNK#|y.
+    # If observation token x is the special token #UNK#. i.e. for every label, we just add in a new condition #UNK#|y.
     # This would be 0 if there are no #UNK#.
     results[UNKNOWN_TOKEN] = {}
 
@@ -110,14 +110,14 @@ if __name__ == "__main__":
 
         DATA = open(f"./../data/{locale}/train")
         training_set = prepare_data(DATA)
-        _results, words, label_counts, emission_counts = estimate_emissions(
+        _results, observations, label_counts, emission_counts = estimate_emissions(
             training_set)
 
         TEST_DATA = open(f"./../data/{locale}/dev.in")
         testing_set = prepare_data(TEST_DATA)
         # with the test data, we are able to smooth out the emissions.
         results = smooth_emissions(
-            testing_set, words, label_counts, emission_counts)
+            testing_set, observations, label_counts, emission_counts)
 
-        # we perform argmax on each word to get the most probable label, and perform prediction.
+        # we perform argmax on each observation to get the most probable label for each observation.
         predict_labels(locale, results)
