@@ -1,7 +1,7 @@
 # HMM 🤔
 
 ## Part 2
-`cd src && python part2.py`
+`cd src && python3 part2.py`
 
 |  | EN | FR | SG | CN |
 |- | -- | -- | -- | -- |
