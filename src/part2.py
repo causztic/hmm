@@ -1,20 +1,18 @@
+from itertools import groupby
+
 UNKNOWN_TOKEN = "#UNK#"
 
-# generate a list to use from the data.
-
-
 def prepare_data(file):
-    from itertools import groupby
+    """Prepare the file. Generates a list of lists of sentences"""
     lines = [line for line in file]
     chunks = (list(g) for k, g in groupby(lines, key=lambda x: x != '\n') if k)
     return [[word.rstrip('\n') for word in chunk] for chunk in chunks]
 
-# estimates the emission parameters from the given sequence.
-
-
 def estimate_emissions(sequence):
-    label_counts = {}  # count of every unique tag
-    emission_counts = {}  # count of tag -> observation
+    """Estimates the emission paramters from the given sequence."""
+
+    label_counts = {}  # count of every unique label
+    emission_counts = {}  # count of label -> observation
     results = {}  # MLE results
     words = set()  # track the words in the training set
 
@@ -42,11 +40,12 @@ def estimate_emissions(sequence):
 
     return results, words, label_counts, emission_counts
 
-# estimates the emission parameters from the given sequence from the testing set
-# and a given set of words from the training set.
-
-
 def smooth_emissions(sequence, words, label_counts, emission_counts):
+    """
+    Estimates the emission parameters from the sequence (all the sentences) from the testing set,
+    and a given set of words from the training set.
+    """
+
     results = {}  # MLE results
     k = 1  # set k to 1 according to question
 
@@ -79,30 +78,30 @@ def smooth_emissions(sequence, words, label_counts, emission_counts):
     return results
 
 
-def predict_tags(locale, results):
+def predict_labels(locale, results):
     """Get most probable label -> observation, and write to file."""
-    tags = {}
+    labels = {}
     training_set = [line.rstrip("\n")
                     for line in open(f"./../data/{locale}/dev.in")]
 
     for key, value in results.items():
         highest = -1
-        for tag, prob in value.items():
+        for label, prob in value.items():
             if prob > highest:
                 highest = prob
-                tags[key] = tag
+                labels[key] = label
 
     file = open(f"./../data/{locale}/dev.p2.out", "w")
     for line in training_set:
         if not line.strip():
             file.write("\n")
         else:
-            if line in tags:
-                tag_value = tags[line]
+            if line in labels:
+                label_value = labels[line]
             else:
-                tag_value = tags[UNKNOWN_TOKEN]
+                label_value = labels[UNKNOWN_TOKEN]
 
-            file.write(f"{line} {tag_value}\n")
+            file.write(f"{line} {label_value}\n")
     file.close()
 
 
@@ -120,5 +119,5 @@ if __name__ == "__main__":
         results = smooth_emissions(
             testing_set, words, label_counts, emission_counts)
 
-        # we perform argmax on each word to get the most probable tag, and perform prediction.
-        predict_tags(locale, results)
+        # we perform argmax on each word to get the most probable label, and perform prediction.
+        predict_labels(locale, results)
