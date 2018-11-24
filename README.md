@@ -1,6 +1,6 @@
 # HMM 🤔
 
-## Part 2
+## Part 2 - Emission-only predictions
 `cd src && python3 part2.py`
 
 |  | EN | FR | SG | CN |
@@ -16,6 +16,10 @@
 | Entity Type  recall   | 0.5711| 0.4412|0.3231  |0.3367
 | Entity Type  F        | 0.4844| 0.1955|0.1777  |0.1294
 
-## Part 3
-## Part 4
+## Part 3 - First order transition probabilities and Viterbi
+`cd src && python3 part3.py`
+
+## Part 4 - Second order transition probabilities and Viterbi
+`cd src && python3 part4.py`
+
 ## Part 5
