@@ -2,13 +2,12 @@ import numpy as np
 import more_itertools as mit
 import part2
 
-def estimate_transitions(sequence, group_size = 2, overlap = 1):
+def get_label_counts(sequence):
     """
-    Estimates the transition parameters from the training set using MLE.
+    Obtain the counts of every label.
     sequence : a list of sentences from the training set.
-    group_size : the order of the transitions + 1
-    overlap : the order of the transitions.
     """
+
     label_counts = {}
 
     # we do a first-pass to obtain the counts of every label.
@@ -20,6 +19,14 @@ def estimate_transitions(sequence, group_size = 2, overlap = 1):
             else:
                 label_counts[label] = 1
 
+    return label_counts
+
+def estimate_transitions(sequence):
+    """
+    Estimates the transition parameters from the training set using MLE.
+    sequence : a list of sentences from the training set.
+    """
+    label_counts = get_label_counts(sequence)
 
     # now, we calculate the probabilities of each transition.
     K = len(label_counts)
@@ -34,7 +41,7 @@ def estimate_transitions(sequence, group_size = 2, overlap = 1):
 
     for sentence in sequence:
         # we group each sentence with Si -> Sj
-        window = [list(filter(None, w)) for w in mit.windowed(sentence, n=group_size, step=overlap)]
+        window = [list(filter(None, w)) for w in mit.windowed(sentence, n=2, step=1)]
 
         # handle START_TOKEN -> S1
         Y[label_keys.index(window[0][0].rsplit(" ", 1)[1])] += 1
@@ -42,7 +49,7 @@ def estimate_transitions(sequence, group_size = 2, overlap = 1):
         # handle Si -> Sj
         for pair in window:
             Si = pair[0]
-            if len(pair) == group_size:
+            if len(pair) == 2:
                 Sj = pair[1]
                 # more than one word
                 _observation, label = Si.rsplit(" ", 1)

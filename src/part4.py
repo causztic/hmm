@@ -1,59 +1,83 @@
 import numpy as np
+import scipy as sp
+import more_itertools as mit
+
 import part2
 import part3
 
-def viterbi_2(sentence, X, S, Y, A, B):
+"""
+We refer to the paper here: http://www.arnaud.martin.free.fr/publi/PARK_14a.pdf
+"""
+
+def estimate_second_order_transitions(sequence):
     """
-    This algorithm is similar to the original viterbi function except with second order transition probabilities.
+    As training might not have Sj|Sj-1,Sj-2 due to data sparsity, we need to address this
     """
+    A1, Y1, Z1 = part3.estimate_transitions(sequence) # first order
+    label_counts = part3.get_label_counts(sequence)
 
-    K = len(S)
-    T = len(sentence)
+    # now, we calculate the probabilities of each transition.
+    K = len(label_counts)
+    label_values = list(label_counts.values())
+    label_keys   = list(label_counts)
+    A2 = np.zeros((K, K, K)) # Si, Sj -> Sk
 
-    T1 = np.zeros((K, T))  # T1[i,j] stores the probability of the most likely path so far
-    T2 = np.zeros((K, T))  # T2[i,j] stores the parent of the most likely path so far
-    result = np.zeroes(T)
+    # we define Y2 to be START_TOKEN, S1 -> S2
+    Y = np.zeros((K, K))
+    # we define Z to be Sn-1, Sn -> STOP
+    Z = np.zeros((K, K))
 
-    # base case remains the same as the original function
-    for i in range(K):
-        T1[i, 0] = Y[i]*B[i, 0]
-        # T2[i, 0] = 0
+    # TODO: rsplit beforehand
+    for sentence in sequence:
+        # we group each sentence with Si, Sj -> Sk
+        window = [list(filter(None, w)) for w in mit.windowed(sentence, n=3, step=2)]
 
-    # new case before the actual recursive case, at index = 1. Same as the original viterbi's recursive case,
-    # as it has only one parent.
-    for i in range(K):
-        calc = [T1[k, i-1] * A[k, i] * B[i, 1] for k in range(K)]
-        max_value = np.amax(calc)
-        # find the maximum value and store into T1. store the k responsible into T2.
-        T1[i, 1] = max_value
-        T2[i, 1] = calc.index(max_value)
+        # handle START_TOKEN, S1 -> S2
+        S1 = window[0][0].rsplit(" ", 1)[1]
+        S2 = window[0][1].rsplit(" ", 1)[1]
 
-    # recursive case. Same as the original viterbi's recursive case except with an extra T1 with i-2.
-    for i in range(2, T):
-        for j in range(K):
-            calc = [T1[k, i-2] * T1[k, i-1] * A[k, j] * B[j, i] for k in range(K)]
-            max_value = np.amax(calc)
-            # find the maximum value and store into T1. store the k responsible into T2.
-            T1[j, i] = max_value
-            T2[j, i] = calc.index(max_value)
+        Y[label_keys.index(S1), label_keys.index(S2)] += 1
 
-    # end case
-    # we have a list to store the largest values. we go through T2 to obtain back the best path.
-    # the backward propagation is the same as the original viterbi algorithm.
-    Z = np.zeroes(T)
+        # handle Si, Sj -> Sk
+        for triple in window:
+            Si = triple[0]
+            if len(triple) == 3:
+                Sj = triple[1]
+                Sk = triple[2]
+                _observation, label = Si.rsplit(" ", 1)
+                _observation, next_label = Sj.rsplit(" ", 1)
+                _observation, last_label = Sk.rsplit(" ", 1)
 
-    last_values = [T1[k, T-1] for k in range(K)]
-    Z[T-1] = last_values.index(np.amax(last_values)) # find the k index responsible for largest value.
-    result[T-1] = S[Z[T-1]] # get the optimal label by index.
+                Si_index = label_keys.index(label)
+                Sj_index = label_keys.index(next_label)
+                Sj_index = label_keys.index(last_label)
+                # store the indexes of the transition from Si -> Sj
+                A2[Si_index, Sj_index, Sk_index] += 1
 
-    for i in range(T-1, 0, -1): # from the 2nd last item to the first item.
-        Z[i-1] = T2[Z[i], i]
-        result[i-1] = S[Z[i-1]]
+        # handle Si, Sj -> END_TOKEN
+        Si = window[-1][-2].rsplit(" ", 1)[1]
+        Sj = window[-1][-1].rsplit(" ", 1)[1]
+        Z[label_keys.index(Si), label_keys.index(Sj)] += 1
 
-    return result
+    # TODO: calculate the probabilities of Y and Z
+
+    # we sum up over k to get the total count for each A[i, j]
+    ij_counts = np.sum(A, axis=2)
+
+    for i in range(A.shape[0]):
+        for j in range(A.shape[1]):
+            for k in range(A.shape[2]):
+                A[i, j, k] = float(A[i, j, k]) / ij_counts[i, j]
+
+
+def viterbi_2(sentence, X, S, Y, Z, A, B):
+    """
+    """
+    pass
 
 if __name__ == "__main__":
-    for locale in ["EN", "FR"]:
+    for locale in ["EN"]:
+
         DATA = open(f"./../data/{locale}/train")
         training_set = part2.prepare_data(DATA)
         _results, observations, label_counts, emission_counts = part2.estimate_emissions(
@@ -62,7 +86,7 @@ if __name__ == "__main__":
         TEST_DATA = open(f"./../data/{locale}/dev.in")
         testing_set = part2.prepare_data(TEST_DATA)
         # with the test data, we are able to smooth out the emissions.
-        emissions = part2.smooth_emissions(
+        B = part2.smooth_emissions(
             testing_set, observations, label_counts, emission_counts)
 
-        transitions = part2.estimate_transitions(training_set)
+        estimate_second_order_transitions(training_set, label_counts)
