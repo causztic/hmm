@@ -35,6 +35,7 @@ def estimate_transitions(sequence, group_size = 2, overlap = 1):
     for sentence in sequence:
         # we group each sentence with Si -> Sj
         window = [list(filter(None, w)) for w in mit.windowed(sentence, n=group_size, step=overlap)]
+
         # handle START_TOKEN -> S1
         Y[label_keys.index(window[0][0].rsplit(" ", 1)[1])] += 1
 
@@ -99,18 +100,24 @@ def viterbi(sentence, X, S, Y, Z, A, B):
 
     # first case, START -> S1
     for i in range(K):
-        T1[i, 0] = Y[i]*B[i, 0]
         # T2[i, 0] = 0
-
+        idx = -1 # UNKNOWN_TOKEN
+        if sentence[0] in X:
+            idx = X.index(sentence[0])
+        T1[i, 0] = Y[i]*B[i, idx]
     # recursive case
     for i in range(1, T):
         for j in range(K):
-            calc = [T1[k, i-1] * A[k, j] * B[j, i] for k in range(K)]
+            idx = -1
+            if sentence[i] in X:
+                idx = X.index(sentence[i])
+
+            calc = [T1[k, i-1] * A[k, j] * B[j, idx] for k in range(K)]
+
             max_index = np.argmax(calc)
             # find the maximum value and store into T1. store the k responsible into T2.
             T1[j, i] = calc[max_index]
             T2[j, i] = max_index
-
     # end case
     # we omit B as STOP will not have a B value (all 0)
     for i in range(K):
@@ -138,12 +145,12 @@ def viterbi(sentence, X, S, Y, Z, A, B):
 def predict_viterbi(locale, observations, labels, Y, Z, A, B):
     """Get most probable label -> observation with Viterbi, and write to file."""
 
-    training_set = [line.rstrip("\n")
+    testing_set = [line.rstrip("\n")
                     for line in open(f"./../data/{locale}/dev.in")]
 
     file = open(f"./../data/{locale}/dev.p3.out", "w")
     sentence_buffer = []
-    for line in training_set:
+    for line in testing_set:
         if not line.strip():
             # sentence has ended
             result = viterbi(sentence_buffer, observations, labels, Y, Z, A, B)
@@ -156,7 +163,7 @@ def predict_viterbi(locale, observations, labels, Y, Z, A, B):
     file.close()
 
 if __name__ == "__main__":
-    for locale in ["EN"]:
+    for locale in ["EN", "FR", "CN", "SG"]:
 
         DATA = open(f"./../data/{locale}/train")
         training_set = part2.prepare_data(DATA)

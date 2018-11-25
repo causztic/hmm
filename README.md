@@ -19,6 +19,19 @@
 ## Part 3 - First order transition probabilities and Viterbi
 `cd src && python3 part3.py`
 
+|  | EN | FR | SG | CN |
+|- | -- | -- | -- | -- |
+| #Entity in gold data  | 802   | 238   |4092    |1081
+| #Entity in prediction | 712   | 202   |3349    |4417
+| #Correct Entity       | 490   | 109   |1706    |434
+| Entity  precision     | 0.6882| 0.5396|0.5094  |0.0983
+| Entity  recall        | 0.6110| 0.4580|0.4169  |0.4015
+| Entity  F             | 0.6473| 0.4955|0.4585  |0.1579
+| #Correct Entity Type  | 443   | 60    |1108    |296
+| Entity Type  precision| 0.6222| 0.2970|0.3308  |0.0670
+| Entity Type  recall   | 0.5524| 0.2521|0.2708  |0.2738
+| Entity Type  F        | 0.5852| 0.2727|0.2978  |0.1077
+
 ## Part 4 - Second order transition probabilities and Viterbi
 `cd src && python3 part4.py`
 
