@@ -30,21 +30,21 @@ def estimate_transitions(sequence):
 
     # now, we calculate the probabilities of each transition.
     K = len(label_counts)
-    label_values = list(label_counts.values())
+    label_values = np.array(list(label_counts.values()))
     label_keys   = list(label_counts)
-    A = np.zeros((K, K))
+    A_frequency = np.zeros((K, K))
 
     # we define Y to be START_TOKEN -> S1
-    Y = np.zeros(K)
+    Y_frequency = np.zeros(K)
     # we define Z to be Sn -> END_TOKEN
-    Z = np.zeros(K)
+    Z_frequency = np.zeros(K)
 
     for sentence in sequence:
         # we group each sentence with Si -> Sj
         window = [list(filter(None, w)) for w in mit.windowed(sentence, n=2, step=1)]
 
         # handle START_TOKEN -> S1
-        Y[label_keys.index(window[0][0].rsplit(" ", 1)[1])] += 1
+        Y_frequency[label_keys.index(window[0][0].rsplit(" ", 1)[1])] += 1
 
         # handle Si -> Sj
         for pair in window:
@@ -57,22 +57,20 @@ def estimate_transitions(sequence):
                 Si_index = label_keys.index(label)
                 Sj_index = label_keys.index(next_label)
                 # store the indexes of the transition from Si -> Sj
-                A[Si_index, Sj_index] += 1
+                A_frequency[Si_index, Sj_index] += 1
 
         # handle Sn -> END_TOKEN
-        Z[label_keys.index(window[-1][-1].rsplit(" ", 1)[1])] += 1
+        Z_frequency[label_keys.index(window[-1][-1].rsplit(" ", 1)[1])] += 1
 
     # calculate the probabilities of START_TOKEN -> S1 and Sn -> END_TOKEN
-    Y = [float(i) / len(sequence) for i in Y]
-    Z = [float(i) / len(sequence) for i in Z]
+    Y = Y_frequency / len(sequence)
+    Z = Z_frequency / len(sequence)
 
     # now that results have all the counts of transitions,
     # we use the label_counts to divide them to get the MLE
-    for i in range(A.shape[0]):
-        for j in range(A.shape[1]):
-            A[i, j] = float(A[i, j]) / label_values[i]
+    A = A_frequency / label_values[:,None]
 
-    return A, Y, Z
+    return A, Y, Z, A_frequency, Y_frequency, Z_frequency
 
 
 """TODO: in case you encounter potential numerical underflow issue, think of a way to address such an
@@ -183,6 +181,6 @@ if __name__ == "__main__":
         B = part2.smooth_emissions(
             testing_set, observations, label_counts, emission_counts)
 
-        A, Y, Z = estimate_transitions(training_set)
+        A, Y, Z, _, _, _ = estimate_transitions(training_set)
 
         predict_viterbi(locale, observations, list(label_counts), Y, Z, A, B)

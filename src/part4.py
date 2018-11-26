@@ -9,23 +9,32 @@ import part3
 We refer to the paper here: http://www.arnaud.martin.free.fr/publi/PARK_14a.pdf
 """
 
+def generate_k(item):
+    """k of deleted interpolation"""
+    return (np.log(item + 1) + 1) / (np.log(item + 1) + 2)
+
 def estimate_second_order_transitions(sequence):
     """
-    As training might not have Sj|Sj-1,Sj-2 due to data sparsity, we need to address this
+    As test data might not have Sj|Sj-1,Sj-2 due to data sparsity,
+    we need to address this somehow.
+    We can implement some sort of guessing based on the nearest state transitions,
+    and will be using deleted interpolation for it.
     """
-    A1, Y1, Z1 = part3.estimate_transitions(sequence) # first order
+
+    A1, Y1, Z1, A1_frequency, Y1_frequency, Z1_frequency = part3.estimate_transitions(sequence) # first order
     label_counts = part3.get_label_counts(sequence)
 
     # now, we calculate the probabilities of each transition.
     K = len(label_counts)
     label_values = list(label_counts.values())
     label_keys   = list(label_counts)
-    A2 = np.zeros((K, K, K)) # Si, Sj -> Sk
+    A2_frequency = np.zeros((K, K, K)) # Si, Sj -> Sk
 
-    # we define Y2 to be START_TOKEN, S1 -> S2
-    Y = np.zeros((K, K))
-    # we define Z to be Sn-1, Sn -> STOP
-    Z = np.zeros((K, K))
+    y_frequency = np.zeros(K)      # START_TOKEN -> S1
+    Y_frequency = np.zeros((K, K)) # START_TOKEN, S1 -> S2, i is S1, j is S2
+
+    z_frequency = np.zeros(K)      # Sn -> STOP
+    Z_frequency = np.zeros((K, K)) # Sn-1, Sn -> STOP, i = Sn-1, j is Sn
 
     # TODO: rsplit beforehand
     for sentence in sequence:
@@ -35,12 +44,15 @@ def estimate_second_order_transitions(sequence):
         # handle START_TOKEN, S1 -> S2
         S1 = window[0][0].rsplit(" ", 1)[1]
         S2 = window[0][1].rsplit(" ", 1)[1]
-
-        Y[label_keys.index(S1), label_keys.index(S2)] += 1
+        S1_index = label_keys.index(S1)
+        Y_frequency[S1_index, label_keys.index(S2)] += 1
+        y_frequency[S1_index] += 1
 
         # handle Si, Sj -> Sk
         for triple in window:
             Si = triple[0]
+            # Possible combinations are (Si, Sj, Sk), (Si, Sj) as overlap = 2.
+            # We only are concerned with (Si, Sj, Sk), and leave (Si, Sj) for END_TOKEN.
             if len(triple) == 3:
                 Sj = triple[1]
                 Sk = triple[2]
@@ -57,17 +69,32 @@ def estimate_second_order_transitions(sequence):
         # handle Si, Sj -> END_TOKEN
         Si = window[-1][-2].rsplit(" ", 1)[1]
         Sj = window[-1][-1].rsplit(" ", 1)[1]
-        Z[label_keys.index(Si), label_keys.index(Sj)] += 1
+        Sj_index = label_keys.index(Sj)
 
-    # TODO: calculate the probabilities of Y and Z
+        z_frequency[Sj_index] += 1
+        Z_frequency[label_keys.index(Si), Sj_index] += 1
 
+    # we calculate the Ks for deleted interpolation
+    k_function = np.vectorize(generate_k)
+    k2 = k_function(A1_frequency)
+    k3 = k_function(A2_frequency)
+
+    lambda_1 = k3
+    lambda_2 = (1 - k3) * k2
+    lambda_3 = (1 - k3) * (1 - k2)
+
+    #calculate the probabilities of Y and Z
+    Y = Y_frequency / y_frequency[:,None]
+    Z = Z_frequency / z_frequency[:,None]
     # we sum up over k to get the total count for each A[i, j]
-    ij_counts = np.sum(A, axis=2)
+    ij_counts = np.sum(A2_frequency, axis=2)
 
-    for i in range(A.shape[0]):
-        for j in range(A.shape[1]):
-            for k in range(A.shape[2]):
-                A[i, j, k] = float(A[i, j, k]) / ij_counts[i, j]
+    # A2[i, j, k] = float(A_frequency[i, j, k]) / ij_counts[i, j]
+    # first term is (K, K, K), second term is (K, K), third term is K.
+    # we sum it up such that Si, Sj -> Sk + Sj -> Sk + Sk across all Sk.
+    A2 = np.sum([lambda_1 * (A2_frequency / ij_counts[:,:,None]), (lambda_2 * A1)[:,:,None], (lambda_3 * (A1_frequency / np.sum(A1_frequency)))])
+
+    return A2, Y, Z
 
 
 def viterbi_2(sentence, X, S, Y, Z, A, B):
@@ -89,4 +116,4 @@ if __name__ == "__main__":
         B = part2.smooth_emissions(
             testing_set, observations, label_counts, emission_counts)
 
-        estimate_second_order_transitions(training_set, label_counts)
+        A2, Y, Z = estimate_second_order_transitions(training_set, label_counts)
