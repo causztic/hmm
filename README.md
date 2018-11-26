@@ -22,15 +22,15 @@
 |  | EN | FR | SG | CN |
 |- | -- | -- | -- | -- |
 | #Entity in gold data  | 802   | 238   |4092    |1081
-| #Entity in prediction | 712   | 202   |3349    |4384
-| #Correct Entity       | 490   | 109   |1706    |434
-| Entity  precision     | 0.6882| 0.5396|0.5094  |0.0990
-| Entity  recall        | 0.6110| 0.4580|0.4169  |0.4015
-| Entity  F             | 0.6473| 0.4955|0.4585  |0.1588
-| #Correct Entity Type  | 443   | 60    |1108    |296
-| Entity Type  precision| 0.6222| 0.2970|0.3308  |0.0675
-| Entity Type  recall   | 0.5524| 0.2521|0.2708  |0.2738
-| Entity Type  F        | 0.5852| 0.2727|0.2978  |0.1083
+| #Entity in prediction | 734   | 202   |3558    |1556
+| #Correct Entity       | 509   | 110   |1646    |432
+| Entity  precision     | 0.6935| 0.5419|0.4626  |0.2776
+| Entity  recall        | 0.6347| 0.4622|0.4022  |0.3996
+| Entity  F             | 0.6628| 0.4989|0.4303  |0.3276
+| #Correct Entity Type  | 460   | 61    |1057    |302
+| Entity Type  precision| 0.6267| 0.3005|0.2971  |0.1941
+| Entity Type  recall   | 0.5736| 0.2563|0.2583  |0.2794
+| Entity Type  F        | 0.5990| 0.2766|0.2763  |0.2290
 
 ## Part 4 - Second order transition probabilities and Viterbi
 `cd src && python3 part4.py`

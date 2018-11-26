@@ -104,19 +104,18 @@ def viterbi(sentence, X, S, Y, Z, A, B):
     result = []
 
     # first case, START -> S1
+    idx = -1 # UNKNOWN_TOKEN
+    if sentence[0] in X:
+        idx = X.index(sentence[0])
     for i in range(K):
         # T2[i, 0] = 0
-        idx = -1 # UNKNOWN_TOKEN
-        if sentence[0] in X:
-            idx = X.index(sentence[0])
         T1[i, 0] = np.log(Y[i]) + np.log(B[i, idx])
     # recursive case
     for i in range(1, T):
+        idx = -1
+        if sentence[i] in X:
+            idx = X.index(sentence[i])
         for j in range(K):
-            idx = -1
-            if sentence[i] in X:
-                idx = X.index(sentence[i])
-
             calc = [T1[k, i-1] + np.log(A[k, j]) + np.log(B[j, idx]) for k in range(K)]
 
             max_index = np.argmax(calc)
@@ -126,22 +125,20 @@ def viterbi(sentence, X, S, Y, Z, A, B):
     # end case
     # we omit B as STOP will not have a B value (all 0)
     for i in range(K):
-        calc = [T1[k, T] * Z[i] for k in range(K)]
+        calc = [T1[k, T-1] + np.log(Z[i]) for k in range(K)]
         max_index = np.argmax(calc)
         # find the maximum value and store into T1. store the k responsible into T2.
         T1[i, T] = calc[max_index]
         T2[i, T] = max_index
 
-
     # we have a list to store the largest values. we go through T2 to obtain back the best path.
     W = np.zeros(T+1, dtype=np.int8)
 
-    last_values = [T1[k, T] for k in range(K)]
     # find the k index responsible for largest value.
-    W[T-1] = np.argmax(last_values)
-    result.append(S[W[T-1]])  # get the optimal label by index.
+    W[T] = np.argmax(T1[:,T])
+    result.append(S[W[T]])  # get the optimal label by index.
 
-    for i in range(T-1, 0, -1):  # from the 2nd last item to the first item.
+    for i in range(T, 0, -1):  # from the 2nd last item to the first item.
         W[i-1] = T2[W[i], i]
         result.append(S[W[i-1]])
     result.reverse()
@@ -155,6 +152,7 @@ def predict_viterbi(locale, observations, labels, Y, Z, A, B):
 
     file = open(f"./../data/{locale}/dev.p3.out", "w")
     sentence_buffer = []
+    count = 0
     for line in testing_set:
         if not line.strip():
             # sentence has ended
