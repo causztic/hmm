@@ -119,7 +119,7 @@ def viterbi_2(sentence, X, S, Y, Y1, Z, Z1, A, B):
     # T1[i,j, k] stores the probability of the most likely path so far, where Si, Sj -> Sk
     T1 = np.zeros((K, K, T+1))
     # T2[i,j] stores the parent of the most likely path so far
-    T2 = np.zeros((K, K, T+1))
+    T2 = np.zeros((K, T+1), dtype=np.int8)
     result = []
 
     # first case, START -> S1
@@ -147,11 +147,10 @@ def viterbi_2(sentence, X, S, Y, Y1, Z, Z1, A, B):
         for i in range(K):
             for j in range(K):
                 calc = [T1[k, l, o-1] + np.log(A[k, l, j]) + np.log(B[j, idx]) for k in range(K) for l in range(K)]
-
                 max_index = np.argmax(calc)
                 # find the maximum value and store into T1. store the k responsible into T2.
-                T1[i, j, o] = calc[max_index]
-                T2[i, j, o] = max_index
+                T1[:, j, o] = calc[max_index]
+                T2[j, o] = max_index
 
     # last case Sn-1, Sn -> END
     # we omit B as STOP will not have a B value (all 0)
@@ -163,7 +162,7 @@ def viterbi_2(sentence, X, S, Y, Y1, Z, Z1, A, B):
                 max_index = np.argmax(calc)
                 # find the maximum value and store into T1. store the k responsible into T2.
                 T1[i, j, T] = calc[max_index]
-                T2[i, j, T] = max_index
+                T2[j, T] = max_index
     else:
         # single word prediction
         for j in range(K):
@@ -171,19 +170,19 @@ def viterbi_2(sentence, X, S, Y, Y1, Z, Z1, A, B):
             max_index = np.argmax(calc)
             # find the maximum value and store into T1. store the k responsible into T2.
             T1[:, j, T] = calc[max_index]
-            T2[:, j, T] = max_index
+            T2[j, T] = max_index
 
 
     # we have a list to store the largest values. we go through T2 to obtain back the best path.
     W = np.zeros(T+1, dtype=np.int8)
 
     # find the k index responsible for largest value.
-    print(np.argmax(T1[:, :, T]), np.argmax(T1[:, :, T], axis=0))
-    W[T] = np.argmax(T1[:, :, T])
+    W[T] = np.unravel_index(np.argmax(T1[:, :, T]), (K, K))[1]
     result.append(S[W[T]])  # get the optimal label by index.
-
+    print(T2)
     for i in range(T, 0, -1):  # from the 2nd last item to the first item.
-        W[i-1] = T2[W[i], i]
+        print(W[i], T2[W[i], i])
+        W[i-1] = np.unravel_index(T2[W[i], i], (K, K))[1]
         result.append(S[W[i-1]])
     result.reverse()
     return result
