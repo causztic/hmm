@@ -109,7 +109,7 @@ def viterbi(sentence, X, S, Y, Z, A, B):
         idx = -1 # UNKNOWN_TOKEN
         if sentence[0] in X:
             idx = X.index(sentence[0])
-        T1[i, 0] = Y[i]*B[i, idx]
+        T1[i, 0] = np.log(Y[i]) + np.log(B[i, idx])
     # recursive case
     for i in range(1, T):
         for j in range(K):
@@ -117,7 +117,7 @@ def viterbi(sentence, X, S, Y, Z, A, B):
             if sentence[i] in X:
                 idx = X.index(sentence[i])
 
-            calc = [T1[k, i-1] * A[k, j] * B[j, idx] for k in range(K)]
+            calc = [T1[k, i-1] + np.log(A[k, j]) + np.log(B[j, idx]) for k in range(K)]
 
             max_index = np.argmax(calc)
             # find the maximum value and store into T1. store the k responsible into T2.
@@ -169,7 +169,7 @@ def predict_viterbi(locale, observations, labels, Y, Z, A, B):
 
 if __name__ == "__main__":
     for locale in ["EN", "FR", "CN", "SG"]:
-
+        print(f"Running for {locale} dataset")
         DATA = open(f"./../data/{locale}/train")
         training_set = part2.prepare_data(DATA)
         _results, observations, label_counts, emission_counts = part2.estimate_emissions(
