@@ -185,7 +185,7 @@ def predict_viterbi_2(locale, observations, labels, Y, Y1, Z, Z1, A, B):
     file.close()
 
 if __name__ == "__main__":
-    for locale in ["EN"]:
+    for locale in ["EN", "FR"]:
 
         DATA = open(f"./../data/{locale}/train")
         training_set = part2.prepare_data(DATA)

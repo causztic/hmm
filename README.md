@@ -3,8 +3,8 @@
 ## Part 2 - Emission-only predictions
 `cd src && python3 part2.py`
 
-|  | EN | FR | SG | CN |
-|- | -- | -- | -- | -- |
+|                       | EN    | FR    | SG     | CN
+| --------------------- | --    | --    | --     | --
 | #Entity in gold data  | 802   | 238   |4092    |1081
 | #Entity in prediction | 1129  | 836   |10784   |4545
 | #Correct Entity       | 620   | 191   |2443    |594
@@ -19,8 +19,8 @@
 ## Part 3 - First order transition probabilities and Viterbi
 `cd src && python3 part3.py`
 
-|  | EN | FR | SG | CN |
-|- | -- | -- | -- | -- |
+|                       | EN    | FR    | SG     | CN
+| --------------------- | --    | --    | --     | --
 | #Entity in gold data  | 802   | 238   |4092    |1081
 | #Entity in prediction | 734   | 202   |3558    |1556
 | #Correct Entity       | 509   | 110   |1646    |432
@@ -34,5 +34,17 @@
 
 ## Part 4 - Second order transition probabilities and Viterbi
 `cd src && python3 part4.py`
+|                       | EN    | FR
+| --------------------- | --    | --    
+| #Entity in gold data  | 802   | 238   
+| #Entity in prediction | 874   | 745   
+| #Correct Entity       | 477   | 88   
+| Entity  precision     | 0.5458| 0.1181
+| Entity  recall        | 0.5948| 0.3697
+| Entity  F             | 0.5692| 0.1790
+| #Correct Entity Type  | 370   | 57
+| Entity Type  precision| 0.4233| 0.0765
+| Entity Type  recall   | 0.4613| 0.2395
+| Entity Type  F        | 0.4415| 0.1160
 
 ## Part 5
