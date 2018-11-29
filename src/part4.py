@@ -17,8 +17,7 @@ def estimate_second_order_transitions(sequence):
     """
     As test data might not have Sj|Sj-1,Sj-2 due to data sparsity,
     we need to address this somehow.
-    We can implement some sort of guessing based on the nearest state transitions,
-    and will be using deleted interpolation for it.
+    We can implement some sort of guessing based on the nearest state transitions aka Sj|Sj-1, and even Sj itself.
     """
 
     A1, Y1, Z1, A1_frequency, Y1_frequency, Z1_frequency = part3.estimate_transitions(sequence) # first order
@@ -84,7 +83,6 @@ def estimate_second_order_transitions(sequence):
     # we sum up over k to get the total count for each A[i, j]
     ij_counts = np.sum(A2_frequency, axis=2)
 
-    # A2[i, j, k] = float(A_frequency[i, j, k]) / ij_counts[i, j]
     # first term is (K, K, K), second term is (K, K), third term is K.
     # we sum it up such that Si, Sj -> Sk + Sj -> Sk + Sk across all Sk.
     second_order = lambda_1 * np.nan_to_num(A2_frequency / ij_counts[:,:,None])
@@ -99,10 +97,10 @@ def viterbi_2(sentence, X, S, Y, Y1, Z, Z1, A, B):
     Modified Viterbi implementation to allow second order transitions.
     In addition to the variables in viterbi(), we introduce:
 
-    Y1 => START_TOKEN -> S1
+    Y1 => START_TOKEN -> S1, to establish initial state and for single word tweets
     Y  => START_TOKEN, S1 -> S2
     Z  => Sn-1, Sn -> END_TOKEN
-    Z1 => Sn -> END_TOKEN
+    Z1 => Sn -> END_TOKEN, for single word tweets
     """
 
     K = len(S)
@@ -145,14 +143,25 @@ def viterbi_2(sentence, X, S, Y, Y1, Z, Z1, A, B):
                 T1[k, n] = calc[max_index]
                 T2[k, n] = np.unravel_index(max_index, (K, K))[0]
 
-    # end case, Sn-1 Sn -> END
-    for j in range(K):
-        calc = [T1[j, N-1] + np.log(Z[i, j]) for i in range(K)]
+    if N == 1:
+        # one word tweet coverage for the weird people
+        # end case, Sn -> END
 
-        max_index = np.argmax(calc)
-        # find the maximum value and store into T1. store the k responsible into T2.
-        T1[j, N] = calc[max_index]
-        T2[j, N] = max_index
+        for j in range(K):
+            calc = [T1[i, N-1] + np.log(Z1[j]) for i in range(K)]
+            max_index = np.argmax(calc)
+            # find the maximum value and store into T1. store the k responsible into T2.
+            T1[j, N] = calc[max_index]
+            T2[j, N] = max_index
+    else:
+        # end case, Sn-1 Sn -> END
+        for j in range(K):
+            calc = [T1[j, N-1] + np.log(Z[i, j]) for i in range(K)]
+
+            max_index = np.argmax(calc)
+            # find the maximum value and store into T1. store the k responsible into T2.
+            T1[j, N] = calc[max_index]
+            T2[j, N] = max_index
 
     W = np.zeros(N+1, dtype=np.int8)
     # find the k index responsible for largest Sn -> STOP value.
