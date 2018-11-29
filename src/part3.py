@@ -81,9 +81,6 @@ issue in your implementation.
 def viterbi(sentence, X, S, Y, Z, A, B):
     """
     This algorithm generates a path which is a sequence of labels that generates the observations.
-    The code references the pseudocode from Wikipedia https://en.wikipedia.org/wiki/Viterbi_algorithm.
-    It is modified to suit our previous codes.
-
     Parameters
     sentence => the sentence we are analyzing. it is T-long.
     X => list of observations. There are N unique observations, and T observations in this particular sentence.
@@ -111,33 +108,31 @@ def viterbi(sentence, X, S, Y, Z, A, B):
         # T2[i, 0] = 0
         T1[i, 0] = np.log(Y[i]) + np.log(B[i, idx])
     # recursive case
-    for i in range(1, T):
+    for n in range(1, T):
         idx = -1
-        if sentence[i] in X:
-            idx = X.index(sentence[i])
+        if sentence[n] in X:
+            idx = X.index(sentence[n])
         for j in range(K):
-            calc = [T1[k, i-1] + np.log(A[k, j]) + np.log(B[j, idx]) for k in range(K)]
+            calc = [T1[i, n-1] + np.log(A[i, j]) + np.log(B[j, idx]) for i in range(K)]
 
             max_index = np.argmax(calc)
             # find the maximum value and store into T1. store the k responsible into T2.
-            T1[j, i] = calc[max_index]
-            T2[j, i] = max_index
+            T1[j, n] = calc[max_index]
+            T2[j, n] = max_index
     # end case
     # we omit B as STOP will not have a B value (all 0)
-    for i in range(K):
-        calc = [T1[k, T-1] + np.log(Z[i]) for k in range(K)]
+    for j in range(K):
+        calc = [T1[i, T-1] + np.log(Z[j]) for i in range(K)]
         max_index = np.argmax(calc)
         # find the maximum value and store into T1. store the k responsible into T2.
-        T1[i, T] = calc[max_index]
-        T2[i, T] = max_index
+        T1[j, T] = calc[max_index]
+        T2[j, T] = max_index
 
     # we have a list to store the largest values. we go through T2 to obtain back the best path.
     W = np.zeros(T+1, dtype=np.int8)
 
-    # find the k index responsible for largest value.
+    # find the k index responsible for largest Sn -> STOP value.
     W[T] = np.argmax(T1[:,T])
-    result.append(S[W[T]])  # get the optimal label by index.
-
     for i in range(T, 0, -1):  # from the 2nd last item to the first item.
         W[i-1] = T2[W[i], i]
         result.append(S[W[i-1]])
