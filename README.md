@@ -34,6 +34,7 @@
 
 ## Part 4 - Second order transition probabilities and Viterbi
 `cd src && python3 part4.py`
+
 |                       | EN    | FR
 | --------------------- | --    | --    
 | #Entity in gold data  | 802   | 238   
