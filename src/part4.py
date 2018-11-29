@@ -126,7 +126,10 @@ def viterbi_2(sentence, X, S, Y, Y1, Z, Z1, A, B):
         elif n == 1:
             # START, Sj -> Sk
             for k in range(K):
-                calc = [T1[j, 1] + np.log(Y[j, k]) + np.log(B[k, idx]) for j in range(K)]
+                calc = []
+                for j in range(K):
+                    calc.append(T1[j, 1] + np.log(Y[j, k]) + np.log(B[k, idx]))
+
                 max_index = np.argmax(calc)
                 T1[k, n] = calc[max_index]
                 T2[k, n] = max_index
@@ -140,7 +143,7 @@ def viterbi_2(sentence, X, S, Y, Y1, Z, Z1, A, B):
 
                 max_index = np.argmax(calc)
                 T1[k, n] = calc[max_index]
-                T2[k, n] = np.unravel_index(max_index, (K, K))[1]
+                T2[k, n] = np.unravel_index(max_index, (K, K))[0]
 
     # end case, Sn-1 Sn -> END
     for j in range(K):
@@ -165,7 +168,7 @@ def predict_viterbi_2(locale, observations, labels, Y, Y1, Z, Z1, A, B):
     """Get most probable label -> observation with second-order Viterbi, and write to file."""
 
     testing_set = [line.rstrip("\n")
-                    for line in open(f"./../data/{locale}/dev.short.in")]
+                    for line in open(f"./../data/{locale}/dev.in")]
 
     file = open(f"./../data/{locale}/dev.p4.out", "w")
     sentence_buffer = []
