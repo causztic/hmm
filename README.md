@@ -75,7 +75,7 @@ To run, do:
 
 ## Part 5
 
-For part 5, we will be using negative perceptrons. Instead of using MLE for an averaged transition and emission weights and probabilities, we have each line evaluated as-is and update the weights as the algorithm iterates through. 
+For part 5, we will be using structured perceptrons. Instead of using MLE for an averaged transition and emission weights and probabilities, we have each line evaluated as-is and update the weights as the algorithm iterates through. 
 
 To run, open Jupyter Notebook and open the file at `src/ML Project part 5.ipynb`.
 
