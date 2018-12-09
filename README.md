@@ -1,5 +1,8 @@
 # HMM 🤔
 
+This document includes a brief report along with instructions to run the code.
+A more detailed documentation is at https://docs.google.com/document/d/1dWIZqU9U8MTLBfJ_GW496eK8C6ms6I9AiZsGuVdpzOU.
+
 ## Part 2 - Emission-only predictions
 To predict with emissions-only, the training set has all the lines concatentated together and read through, word by word. A set is used to keep track of unique observations, while maintaining the counts of each observation and label in a map.
 
@@ -79,15 +82,23 @@ For part 5, we will be using structured perceptrons. Instead of using MLE for an
 
 To run, open Jupyter Notebook and open the file at `src/ML Project part 5.ipynb`.
 
-|                       | EN    | FR
-| --------------------- | --    | --    
-| #Entity in gold data  |    |    
-| #Entity in prediction |    |    
-| #Correct Entity       |    |    
-| Entity  precision     |    | 
-| Entity  recall        |    | 
-| Entity  F             |    | 
-| #Correct Entity Type  |    | 
-| Entity Type  precision|    | 
-| Entity Type  recall   |    | 
-| Entity Type  F        |    | 
+# EN
+
+#Entity in gold data: 263
+
+#Entity in prediction: 248
+
+#Correct Entity : 14
+
+Entity  precision: 0.0565
+Entity  recall: 0.0532
+Entity  F: 0.0548
+
+#Correct Entity Type : 4
+
+Entity Type  precision: 0.0161
+Entity Type  recall: 0.0152
+Entity Type  F: 0.0157
+
+
+# FR
